@@ -4,6 +4,8 @@
     xmlns:mdc="http://mdc"
     xmlns:ead="urn:isbn:1-931666-22-9" exclude-result-prefixes="#all" version="2.0">
     
+    <!-- currently requires c elements only, not c01, c02, etc. -->
+    
     <xsl:output method="xml" indent="yes"/>
     
     <xsl:param name="folder-number-start" select="1" as="xs:integer"/>
