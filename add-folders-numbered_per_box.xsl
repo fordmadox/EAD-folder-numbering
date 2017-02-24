@@ -28,7 +28,7 @@
             />
         </xsl:variable>
         <xsl:variable name="folder-number-current"
-            select="$folder-number-start + $previous-folder-numbers"/>
+            select="if (following-sibling::ead:container eq '#0') then $previous-folder-numbers else $folder-number-start + $previous-folder-numbers"/>
         <xsl:variable name="folder-number-end" select="$folder-number-current + $range - 1"/>
         
         <xsl:element name="container" namespace="urn:isbn:1-931666-22-9">
