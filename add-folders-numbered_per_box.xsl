@@ -20,15 +20,15 @@
         <xsl:copy-of select="."/>
         <xsl:variable name="currentBox" select="normalize-space()"/>
         <xsl:variable name="range" as="xs:integer">
-            <xsl:value-of select="xs:integer(following-sibling::ead:container/substring-after(normalize-space(.), '#'))"/>
+            <xsl:value-of select="xs:integer(following-sibling::ead:container[1]/substring-after(normalize-space(.), '#'))"/>
         </xsl:variable>
         <xsl:variable name="previous-folder-numbers">
             <xsl:value-of
-                select="sum(preceding::ead:container[normalize-space() = $currentBox][following-sibling::ead:container/contains(., '#')]/xs:integer(substring-after(following-sibling::ead:container/normalize-space(.), '#')))"
+                select="sum(preceding::ead:container[normalize-space() = $currentBox][following-sibling::ead:container[1]/contains(., '#')]/xs:integer(substring-after(following-sibling::ead:container[1]/normalize-space(.), '#')))"
             />
         </xsl:variable>
         <xsl:variable name="folder-number-current"
-            select="if (following-sibling::ead:container eq '#0') then ($folder-number-start + $previous-folder-numbers - 1) else $folder-number-start + $previous-folder-numbers"/>
+            select="if (following-sibling::ead:container[1] eq '#0') then ($folder-number-start + $previous-folder-numbers - 1) else $folder-number-start + $previous-folder-numbers"/>
         <xsl:variable name="folder-number-end" select="$folder-number-current + $range - 1"/>
         
         <xsl:element name="container" namespace="urn:isbn:1-931666-22-9">

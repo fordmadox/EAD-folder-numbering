@@ -4,8 +4,13 @@
     xmlns:mdc="http://mdc"
     xmlns:ead="urn:isbn:1-931666-22-9" exclude-result-prefixes="#all" version="2.0">
     
-    <!-- currently requires c elements only, not c01, c02, etc. -->
-    
+    <!-- basic process, with 3 modes and 1 key:
+        first we create a variable of all the top-container containers sorted in order. (i.e resort-first)
+        then we create another variable that numbers the folders in those container groupings from the first variable. (i.e. folder-second)
+        finally, we do an identity transformation on the entire finding aid, copying in the new folder numbers with the xpath key created in steps 1 and 2. (i.e. #all)
+        pretty simple, right? 
+     -->
+
     <xsl:output method="xml" indent="yes"/>
     
     <xsl:param name="folder-number-start" select="1" as="xs:integer"/>
@@ -14,7 +19,7 @@
 
     <xsl:function name="mdc:container-to-number" as="xs:decimal">
         <xsl:param name="current-container" as="node()*"/>
-        <xsl:variable name="primary-container-number" select="replace($current-container, '\D', '')"/>
+        <xsl:variable name="primary-container-number" select="if (contains($current-container, '-')) then replace(substring-before($current-container, '-'), '\D', '') else replace($current-container, '\D', '')"/>
         <xsl:variable name="primary-container-modify">
             <xsl:choose>
                 <xsl:when test="matches($current-container, '\D')">
@@ -31,69 +36,76 @@
         </xsl:variable>
         <xsl:variable name="id-attribue" select="$current-container/@id"/>
         <xsl:variable name="secondary-container-number">
-            <xsl:choose>
-                <!-- changed this xpath slightly so as to ignore containers that start with a # -->
-                <xsl:when test="$current-container/following-sibling::ead:container[not(starts-with(., '#'))][@parent eq $id-attribue][1]">
-                    <xsl:value-of select="format-number(number(replace($current-container/following-sibling::ead:container[@parent eq $id-attribue][1], '\D', '')), '000000')"/>
-                </xsl:when>
-                <xsl:otherwise>
-                    <xsl:value-of select="000000"/>
-                </xsl:otherwise>
-            </xsl:choose>
+            <!-- changed this xpath slightly so as to ignore containers that start with a # -->
+            <xsl:value-of select="if (contains($current-container/following-sibling::ead:container[@parent eq $id-attribue][1], '-')) then 
+                format-number(number(replace(substring-before($current-container/following-sibling::ead:container[@parent eq $id-attribue][1], '-'), '\D', '')), '000000')
+                else if ($current-container/following-sibling::ead:container[not(starts-with(., '#'))][@parent eq $id-attribue][1])
+                then format-number(number(replace($current-container/following-sibling::ead:container[@parent eq $id-attribue][1], '\D', '')), '000000')
+                else '000000'"/>
         </xsl:variable>
         <!-- could do this recursively, instead, but ASpace can only have container1,2,3 as a group... and i've
             never seen more than that needed, anyway -->
         <xsl:variable name="tertiary-container-number">
-            <xsl:choose>
-                <xsl:when test="$current-container/following-sibling::ead:container[not(starts-with(., '#'))][@parent eq $id-attribue][2]">
-                    <xsl:value-of select="format-number(number(replace($current-container/following-sibling::ead:container[@parent eq $id-attribue][2], '\D', '')), '000000')"/>
-                </xsl:when>
-                <xsl:otherwise>
-                    <xsl:value-of select="000000"/>
-                </xsl:otherwise>
-            </xsl:choose>
+            <xsl:value-of select="if (contains($current-container/following-sibling::ead:container[@parent eq $id-attribue][2], '-')) then 
+                format-number(number(replace(substring-before($current-container/following-sibling::ead:container[@parent eq $id-attribue][1], '-'), '\D', '')), '000000')
+                else if ($current-container/following-sibling::ead:container[not(starts-with(., '#'))][@parent eq $id-attribue][2])
+                then format-number(number(replace($current-container/following-sibling::ead:container[@parent eq $id-attribue][2], '\D', '')), '000000')
+                else '000000'"/>
         </xsl:variable>
         <xsl:value-of select="xs:decimal(concat($primary-container-number, '.', $primary-container-modify, $secondary-container-number, $tertiary-container-number))"/>
     </xsl:function>
-
-
+    
     <xsl:template match="@* | node()" mode="#all">
         <xsl:copy>
             <xsl:apply-templates select="@* | node()" mode="#current"/>
         </xsl:copy>
     </xsl:template>
-    
-    <xsl:template match="ead:c" mode="resorted-dsc">
-        <xsl:element name="resorted-component">
-            <xsl:apply-templates select="ead:did/ead:container" mode="#current"/>
-        </xsl:element>
-    </xsl:template>
 
-    <xsl:template match="ead:container[@type='Box']" mode="resorted-dsc">
-        <xsl:copy-of select="."/>
+    <!-- selects all the top containers and sorts the lot.
+    right now, this requires a #N value in the folder column / child container.
+    -->
+    <xsl:variable name="resorted-container-groups">
+            <xsl:for-each select="//ead:container[@id][not(@parent)]">
+                <xsl:sort select="mdc:container-to-number(.)"
+                    data-type="number" order="ascending"/>
+                <xsl:element name="resorted-component">
+                    <xsl:apply-templates select="." mode="resort-first"/>
+                </xsl:element>
+            </xsl:for-each>
+    </xsl:variable>
+    
+    <xsl:variable name="foldered-dsc">
+        <foldered-components>
+            <xsl:apply-templates select="$resorted-container-groups" mode="folder-second"/>
+        </foldered-components>
+    </xsl:variable>
+    
+    <xsl:template match="ead:container" mode="resort-first">
+        <xsl:sequence select="., following-sibling::ead:container[1]"/>
         <xsl:element name="xpath">
             <xsl:call-template name="get-xpath"/>
         </xsl:element>
     </xsl:template>
     
-    <xsl:template match="ead:container[@type='Folder']" mode="resorted-dsc" priority="2">
-        <xsl:copy-of select="."/>
+    <xsl:template match="ead:container[lower-case(@type)='folder']" mode="resort-first" priority="2">
+        <xsl:sequence select="."/>
     </xsl:template>
     
-    <xsl:template match="ead:container[@type='Box']" mode="foldered-dsc">
-        <xsl:copy-of select="."/>
+    <xsl:template match="ead:container[following-sibling::ead:container]" mode="folder-second">
+        <xsl:sequence select="."/>
         <xsl:variable name="range" as="xs:integer">
-            <xsl:value-of select="xs:integer(following-sibling::ead:container/substring-after(normalize-space(.), '#'))"/>
+            <xsl:value-of select="xs:integer(following-sibling::ead:container[1]/substring-after(normalize-space(.), '#'))"/>
         </xsl:variable>
         <xsl:variable name="previous-folder-numbers">
             <xsl:value-of
-                select="sum(preceding::ead:container[following-sibling::ead:container/contains(., '#')]/xs:integer(substring-after(following-sibling::ead:container/normalize-space(.), '#')))"
+                select="sum(preceding::ead:container[following-sibling::ead:container[1]/contains(., '#')]/xs:integer(substring-after(following-sibling::ead:container[1]/normalize-space(.), '#')))"
             />
         </xsl:variable>
         <xsl:variable name="folder-number-current"
-            select="if (following-sibling::ead:container eq '#0') then ($folder-number-start + $previous-folder-numbers - 1) else $folder-number-start + $previous-folder-numbers"/>
+            select="if (following-sibling::ead:container[1] eq '#0') then ($folder-number-start + $previous-folder-numbers - 1) else $folder-number-start + $previous-folder-numbers"/>
         <xsl:variable name="folder-number-end" select="$folder-number-current + $range - 1"/>
         <xsl:element name="container" namespace="urn:isbn:1-931666-22-9">
+            <xsl:attribute name="id"><xsl:value-of select="generate-id()"/></xsl:attribute>
             <xsl:attribute name="parent"><xsl:value-of select="@id"/></xsl:attribute>
             <xsl:attribute name="type">Folder</xsl:attribute>
             <xsl:value-of
@@ -101,22 +113,6 @@
             />
         </xsl:element>
     </xsl:template>
-
-    
-    <!-- selects all the components that have boxes that need folder numbers 
-    right now, this requires a #N value in the folder column.
-    -->
-    <xsl:variable name="resorted-dsc">
-        <xsl:apply-templates select="//ead:c[ead:did/ead:container[@type='Folder'][1]/contains(., '#')]" mode="resorted-dsc">
-            <xsl:sort select="mdc:container-to-number(ead:did/ead:container[@type='Box'][1])" data-type="number" order="ascending"/>
-        </xsl:apply-templates>
-    </xsl:variable>
-    
-    <xsl:variable name="foldered-dsc">
-        <foldered-components>
-            <xsl:apply-templates select="$resorted-dsc" mode="foldered-dsc"/>
-        </foldered-components>
-    </xsl:variable>
     
     
     <!-- thanks, http://stackoverflow.com/questions/953197/how-do-you-output-the-current-element-path-in-xslt !!
@@ -134,10 +130,10 @@
             <xsl:value-of select="$currPath"/>      
         </xsl:if>
     </xsl:template>
-
-    <xsl:template match="ead:container[@type='Folder'][starts-with(normalize-space(.), '#')]" mode="#all"/>
     
-    <xsl:template match="ead:container[@type='Box']">
+    <xsl:template match="ead:container[lower-case(@type)='folder'][starts-with(normalize-space(.), '#')]" mode="#all"/>
+    
+    <xsl:template match="ead:container[lower-case(@type)='box']">
         <xsl:variable name="xpath">
             <xsl:call-template name="get-xpath"/>
         </xsl:variable>
@@ -146,10 +142,11 @@
         </xsl:copy>
         <xsl:for-each select="$foldered-dsc">
             <xsl:if test="key('xpath-match', $xpath)">
-                <xsl:copy-of select="key('xpath-match', $xpath)/ead:container[@type='Folder']"/>
+                <xsl:copy-of select="key('xpath-match', $xpath)/ead:container[lower-case(@type)='folder']"/>
             </xsl:if>
         </xsl:for-each>
     </xsl:template>
+    
     <!-- 
     match game....  example:
     
