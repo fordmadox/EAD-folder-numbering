@@ -13,6 +13,10 @@
 
     <xsl:output method="xml" indent="yes"/>
     
+    <!-- if the container that's usally a container that should be foldered is missing a leading # sign
+    by default, the transformation will be terminated.  you can change this behavior by setting this parameter to 0-->
+    <xsl:param name="stop-numbering" select="1"/>
+    
     <xsl:param name="folder-number-start" select="1" as="xs:integer"/>
     
     <xsl:key name="xpath-match" match="resorted-component" use="xpath/text()"/>
@@ -91,7 +95,13 @@
         <xsl:sequence select="."/>
     </xsl:template>
     
-    <xsl:template match="ead:container[following-sibling::ead:container]" mode="folder-second">
+    <xsl:template match="ead:container[following-sibling::ead:container[1]/not(starts-with(normalize-space(.), '#'))]" mode="folder-second">
+        <xsl:message terminate="{$stop-numbering}">The container with @id="<xsl:value-of select="@id"/>" includes a container that doesn't start with a # sign. This container won't be numbered.  
+If this is a mistake, please update the Excel spreadsheet and then add the folder numbers after including the # sign.
+If this is correct, then you can number the rest of the containers by changing the "stop-numbering" parameter value to 0 before re-transforming the file. Remember to unset this variable later, however.</xsl:message> 
+    </xsl:template>
+    
+    <xsl:template match="ead:container[following-sibling::ead:container[1]/starts-with(normalize-space(.), '#')]" mode="folder-second">
         <xsl:sequence select="."/>
         <xsl:variable name="range" as="xs:integer">
             <xsl:value-of select="xs:integer(following-sibling::ead:container[1]/substring-after(normalize-space(.), '#'))"/>
