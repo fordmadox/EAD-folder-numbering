@@ -16,7 +16,7 @@
     </xsl:template>
     
     <!-- for folders to be numbered, they must have a #N value in the container/@type=Folder element -->
-    <xsl:template match="ead:container[lower-type(@type)='box'][following-sibling::ead:container[starts-with(., '#')]]">
+    <xsl:template match="ead:container[lower-case(@type)='box'][following-sibling::ead:container[starts-with(., '#')]]">
         <xsl:copy-of select="."/>
         <xsl:variable name="currentBox" select="normalize-space()"/>
         <xsl:variable name="range" as="xs:integer">
@@ -39,6 +39,6 @@
         </xsl:element>
     </xsl:template>
     
-    <xsl:template match="ead:container[lower-type(@type)='folder'][starts-with(normalize-space(.), '#')]"/>
+    <xsl:template match="ead:container[lower-case(@type)='folder'][starts-with(normalize-space(.), '#')]"/>
     
 </xsl:stylesheet>
