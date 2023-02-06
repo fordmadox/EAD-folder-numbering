@@ -16,7 +16,7 @@
     </xsl:template>
     
     <!-- for folders to be numbered, they must have a #N value in the container/@type=Folder element -->
-    <xsl:template match="ead:container[@type='Box'][following-sibling::ead:container[starts-with(., '#')]]">
+    <xsl:template match="ead:container[lower-type(@type)='box'][following-sibling::ead:container[starts-with(., '#')]]">
         <xsl:copy-of select="."/>
         <xsl:variable name="currentBox" select="normalize-space()"/>
         <xsl:variable name="range" as="xs:integer">
@@ -33,12 +33,12 @@
         
         <xsl:element name="container" namespace="urn:isbn:1-931666-22-9">
             <xsl:attribute name="parent"><xsl:value-of select="@id"/></xsl:attribute>
-            <xsl:attribute name="type">Folder</xsl:attribute><xsl:value-of
+            <xsl:attribute name="type">folder</xsl:attribute><xsl:value-of
                 select="if ($range gt 1) then concat(string($folder-number-current), '-', string($folder-number-end)) else $folder-number-current"
             />
         </xsl:element>
     </xsl:template>
     
-    <xsl:template match="ead:container[@type='Folder'][starts-with(normalize-space(.), '#')]"/>
+    <xsl:template match="ead:container[lower-type(@type)='folder'][starts-with(normalize-space(.), '#')]"/>
     
 </xsl:stylesheet>

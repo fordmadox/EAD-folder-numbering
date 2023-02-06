@@ -117,7 +117,7 @@ If this is correct, then you can number the rest of the containers by changing t
         <xsl:element name="container" namespace="urn:isbn:1-931666-22-9">
             <xsl:attribute name="id"><xsl:value-of select="generate-id()"/></xsl:attribute>
             <xsl:attribute name="parent"><xsl:value-of select="@id"/></xsl:attribute>
-            <xsl:attribute name="type">Folder</xsl:attribute>
+            <xsl:attribute name="type">folder</xsl:attribute>
             <xsl:value-of
                 select="if ($range gt 1) then concat(string($folder-number-current), '-', string($folder-number-end)) else $folder-number-current"
             />
